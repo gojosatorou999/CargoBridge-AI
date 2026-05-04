@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}My Profile — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-person-circle text-accent-blue"></i> My Profile</h1>
+    <p class="page-subtitle">{{ current_user.role.replace('_',' ').title() }} · {{ current_user.level }}</p>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- Left: Profile card + badges -->
+    <div class="col-lg-4">
+
+      <!-- Identity card -->
+      <div class="glass-card text-center mb-4">
+        <div style="font-size:4rem;margin-bottom:0.5rem;">
+          <i class="bi bi-person-circle text-accent-blue"></i>
+        </div>
+        <h4 style="font-weight:700;">{{ current_user.username }}</h4>
+        <div style="font-size:0.8rem;color:var(--text-muted);">{{ current_user.email }}</div>
+        <div class="mt-2">
+          <span class="congestion-badge badge-congestion-low" style="margin-right:0.3rem;">
+            {{ current_user.role.replace('_',' ').title() }}
+          </span>
+          <span class="congestion-badge" style="background:rgba(123,47,255,0.15);color:#a78bfa;border:1px solid rgba(123,47,255,0.3);">
+            {{ current_user.level }}
+          </span>
+        </div>
+
+        <!-- Points bar -->
+        <div class="mt-3 text-start">
+          <div class="d-flex justify-content-between mb-1">
+            <span style="font-size:0.75rem;color:var(--text-muted);">POINTS</span>
+            <span class="font-mono text-accent-blue" style="font-weight:700;">{{ current_user.points }}</span>
+          </div>
+          {% set next_threshold = 1000 if current_user.points >= 600 else (600 if current_user.points >= 300 else (300 if current_user.points >= 100 else 100)) %}
+          {% set pct = [(current_user.points / next_threshold * 100), 100]|min|int %}
+          <div class="level-bar-wrap">
+            <div class="level-bar" style="width:{{ pct }}%;"></div>
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.3rem;">{{ pct }}% to next level</div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="row g-2 mt-3">
+          <div class="col-4">
+            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-blue);font-family:var(--font-mono);">
+              {{ current_user.reports.count() }}
+            </div>
+            <div style="font-size:0.65rem;color:var(--text-muted);">Reports</div>
+          </div>
+          <div class="col-4">
+            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-green);font-family:var(--font-mono);">
+              {{ current_user.badges.count() }}
+            </div>
+            <div style="font-size:0.65rem;color:var(--text-muted);">Badges</div>
+          </div>
+          <div class="col-4">
+            <div style="font-size:1.2rem;font-weight:700;color:var(--accent-yellow);font-family:var(--font-mono);">
+              {{ current_user.certificates|length }}
+            </div>
+            <div style="font-size:0.65rem;color:var(--text-muted);">Certs</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WhatsApp status -->
+      <div class="glass-card mb-4">
+        <h6 class="section-label">WhatsApp Bot</h6>
+        {% if current_user.whatsapp_number %}
+        <div class="alert-glass success">
+          <i class="bi bi-whatsapp text-accent-green"></i>
+          <span>Linked: {{ current_user.whatsapp_number }}</span>
+        </div>
+        {% else %}
+        <div class="alert-glass">
+          <i class="bi bi-whatsapp"></i>
+          <span>Not linked. Add your number in profile settings.</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- DP World Certificate -->
+      {% if cert %}
+      <div class="glass-card" style="border-color:rgba(255,215,0,0.3);">
+        <h6 class="section-label"><i class="bi bi-award text-accent-yellow"></i> DP World Certificate</h6>
+        <div style="font-size:0.85rem;margin-bottom:0.75rem;">
+          <strong>{{ cert.type }}</strong><br>
+          <span style="color:var(--text-muted);">Quarter: {{ cert.quarter }}</span><br>
+          <span style="color:var(--text-muted);font-size:0.75rem;">Issued: {{ cert.issued_at.strftime('%d %b %Y') }}</span>
+        </div>
+        <a href="/certificate/{{ cert.id }}/download" class="btn-glass" style="font-size:0.8rem;">
+          <i class="bi bi-download"></i> Download PDF
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right: Settings + badges -->
+    <div class="col-lg-8">
+
+      <!-- Edit profile -->
+      <div class="glass-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-sliders text-accent-blue"></i> Profile Settings</h5>
+        <form method="POST" action="/profile">
+          {{ form.hidden_tag() }}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.email.label.text }}</label>
+              {{ form.email(class="form-control", placeholder=current_user.email) }}
+              {% for e in form.email.errors %}<div class="text-accent-red" style="font-size:0.75rem;">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.company_name.label.text }}</label>
+              {{ form.company_name(class="form-control") }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.whatsapp_number.label.text }}</label>
+              {{ form.whatsapp_number(class="form-control", placeholder="+919876543210") }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.language.label.text }}</label>
+              {{ form.language(class="form-select") }}
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn-primary-grad">
+                <i class="bi bi-check2"></i> Save Changes
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Badges -->
+      <div class="glass-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-award text-accent-yellow"></i> My Badges</h5>
+        {% if badges %}
+        <div class="badge-grid">
+          {% for b in badges %}
+          <div class="badge-item">
+            <i class="bi {{ b.icon_class }} badge-icon"></i>
+            <div class="badge-name">{{ b.name }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="color:var(--text-muted);font-size:0.875rem;">
+          <i class="bi bi-trophy"></i> No badges yet — file reports and complete trips to earn them!
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Recent report history -->
+      <div class="glass-card">
+        <h5 class="mb-3"><i class="bi bi-clock-history text-accent-blue"></i> Recent Activity</h5>
+        <table class="table-glass w-100">
+          <thead>
+            <tr><th>Type</th><th>Location</th><th>Status</th><th>Score</th><th>Date</th></tr>
+          </thead>
+          <tbody>
+            {% for r in recent_reports %}
+            <tr>
+              <td>{{ r.disruption_type.replace('_',' ').title() }}</td>
+              <td style="color:var(--text-muted);font-size:0.8rem;">{{ r.location_name or '—' }}</td>
+              <td>
+                {% if r.verification_status == 'approved' %}
+                  <span class="congestion-badge badge-congestion-low">Approved</span>
+                {% elif r.verification_status == 'rejected' %}
+                  <span class="congestion-badge badge-congestion-high">Rejected</span>
+                {% else %}
+                  <span class="congestion-badge badge-congestion-medium">Pending</span>
+                {% endif %}
+              </td>
+              <td class="font-mono" style="font-size:0.8rem;color:var(--accent-blue);">{{ r.confidence_score|int }}%</td>
+              <td style="font-size:0.75rem;color:var(--text-muted);">{{ r.created_at.strftime('%d %b %Y') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center" style="padding:2rem;color:var(--text-muted);">No reports filed yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

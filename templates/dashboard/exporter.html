@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Exporter Dashboard — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-box-seam text-accent-blue"></i> Exporter Dashboard</h1>
+    <p class="page-subtitle">{{ strings.welcome }}, {{ current_user.username }} · {{ current_user.company_name or 'Your Company' }}</p>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Active Shipments</div>
+        <div class="stat-value text-accent-blue">{{ shipments | selectattr('status', 'ne', 'Delivered') | list | length }}</div>
+        <div class="stat-sub">In transit</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">D&D Savings</div>
+        <div class="stat-value text-accent-green">${{ '%.2f'|format(total_savings) }}</div>
+        <div class="stat-sub">All time</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">At-Risk Shipments</div>
+        <div class="stat-value text-accent-red">{{ shipments | selectattr('dd_risk_flag') | list | length }}</div>
+        <div class="stat-sub">D&D flag raised</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Company Rank</div>
+        <div class="stat-value text-accent-yellow">#{{ my_rank.rank if my_rank else '—' }}</div>
+        <div class="stat-sub">Company board</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Shipment tracker -->
+    <div class="col-lg-8">
+      <div class="glass-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-box-seam text-accent-blue"></i> Shipment Tracker</h5>
+          <button class="btn-primary-grad" data-bs-toggle="modal" data-bs-target="#addShipmentModal">
+            <i class="bi bi-plus"></i> Add Shipment
+          </button>
+        </div>
+        {% for s in shipments %}
+        <div class="glass-card mb-3" style="border-color:{{ 'rgba(255,71,87,0.3)' if s.dd_risk_flag else 'rgba(255,255,255,0.05)' }};">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <span class="font-mono text-accent-blue" style="font-size:0.9rem;">{{ s.container_number }}</span>
+              {% if s.dd_risk_flag %}
+                <span class="congestion-badge badge-congestion-high ms-2">D&D RISK</span>
+              {% endif %}
+            </div>
+            <span style="font-size:0.8rem;color:#8892b0;">{{ s.vessel_name or 'Unknown Vessel' }}</span>
+          </div>
+          <!-- Status pipeline -->
+          <div class="pipeline">
+            {% set statuses = ['Origin', 'In Transit', 'At Gate', 'Loaded', 'On Vessel', 'Delivered'] %}
+            {% for step in statuses %}
+            <div class="pipeline-step {{ 'active' if s.status == step else 'done' if statuses.index(step) < statuses.index(s.status) else '' }}">
+              {{ step }}
+            </div>
+            {% endfor %}
+          </div>
+          <div class="d-flex gap-3 mt-2 flex-wrap" style="font-size:0.78rem;color:#4a5568;">
+            <span><i class="bi bi-clock"></i> ETA: <strong style="color:#00d4ff;">{{ s.current_eta.strftime('%d %b %H:%M') if s.current_eta else '—' }}</strong></span>
+            <span><i class="bi bi-hourglass"></i> Free time: {{ s.free_time_expiry.strftime('%d %b') if s.free_time_expiry else '—' }}</span>
+            <span><i class="bi bi-geo-alt"></i> {{ s.destination_port.replace('_',' ').title() if s.destination_port else '—' }}</span>
+            {% if s.dd_saving_usd > 0 %}
+            <span class="text-accent-green"><i class="bi bi-piggy-bank"></i> Saved: ${{ '%.2f'|format(s.dd_saving_usd) }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-4" style="color:#4a5568;">
+          <i class="bi bi-box" style="font-size:2.5rem;"></i>
+          <p class="mt-2">No shipments yet. Add your first shipment.</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Slot recommendations -->
+      {% if slots %}
+      <div class="glass-card">
+        <h5 class="mb-3"><i class="bi bi-calendar-check text-accent-green"></i> Slot Recommendations</h5>
+        {% for slot in slots %}
+        <div id="slot-card-{{ slot.id }}" class="slot-card mb-3">
+          <div class="slot-time">{{ slot.recommended_slot_time.strftime('%H:%M') }}</div>
+          <div class="slot-meta">{{ slot.recommended_slot_time.strftime('%d %b %Y') }}</div>
+          <div class="savings-row mt-2">
+            <div class="saving-item">
+              <div class="saving-value">{{ slot.carbon_saving_kg }} kg</div>
+              <div class="saving-label">CO₂ saved</div>
+            </div>
+            <div class="saving-item">
+              <div class="saving-value">{{ slot.fuel_saving_litres }}L</div>
+              <div class="saving-label">Fuel saved</div>
+            </div>
+            <div class="saving-item">
+              <div class="saving-value text-accent-red">${{ slot.dd_risk_usd }}</div>
+              <div class="saving-label">D&D risk</div>
+            </div>
+            <div class="saving-item">
+              <div class="saving-value text-accent-red">AED {{ slot.dd_risk_aed }}</div>
+              <div class="saving-label">AED</div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <button onclick="acceptSlot({{ slot.id }})" class="btn-glass btn-glass-green">
+              <i class="bi bi-check-circle"></i> Accept
+            </button>
+            <button onclick="requestAlternate({{ slot.id }})" class="btn-glass btn-glass-orange">
+              <i class="bi bi-arrow-repeat"></i> Alternate
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- Company leaderboard -->
+      <div class="glass-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-trophy text-accent-yellow"></i> Company Leaderboard</h5>
+        {% for entry in leaderboard %}
+        <div class="leaderboard-row">
+          <div class="lb-rank {{ 'gold' if entry.rank==1 else 'silver' if entry.rank==2 else 'bronze' if entry.rank==3 else '' }}">
+            {% if entry.rank <= 3 %}{{ ['🥇','🥈','🥉'][entry.rank-1] }}{% else %}{{ entry.rank }}{% endif %}
+          </div>
+          <div class="lb-name">
+            {{ entry.user.company_name or entry.user.username if entry.user else 'Unknown' }}
+            {% if entry.user and entry.user.id == current_user.id %}<span style="font-size:0.7rem;color:#00d4ff;"> ← you</span>{% endif %}
+          </div>
+          <div class="lb-score">${{ entry.score|int }}</div>
+        </div>
+        {% else %}
+        <p style="color:#4a5568;font-size:0.875rem;">No rankings yet.</p>
+        {% endfor %}
+      </div>
+
+      <!-- Quick actions -->
+      <div class="glass-card">
+        <h6 class="section-label">Quick Actions</h6>
+        <div class="d-grid gap-2">
+          <a href="/report" class="btn-glass"><i class="bi bi-flag"></i> Report Disruption</a>
+          <a href="/leaderboard" class="btn-glass"><i class="bi bi-trophy"></i> Leaderboard</a>
+          <a href="/feed" class="btn-glass"><i class="bi bi-camera-reels"></i> Trip Feed</a>
+          <a href="/profile" class="btn-glass"><i class="bi bi-person"></i> My Profile & Badges</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Shipment Modal -->
+<div class="modal fade" id="addShipmentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--glass-border);">
+      <div class="modal-header" style="border-color:var(--glass-border);">
+        <h5 class="modal-title">Add Shipment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="/shipment/create">
+        <div class="modal-body">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Container Number</label>
+            <input type="text" name="container_number" class="form-control" placeholder="MSCU1234567" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Vessel Name</label>
+            <input type="text" name="vessel_name" class="form-control" placeholder="MSC GULSUN">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Voyage Number</label>
+            <input type="text" name="voyage_number" class="form-control" placeholder="W1234E">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Origin City</label>
+            <input type="text" name="origin_city" class="form-control" placeholder="Mumbai">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Destination Port</label>
+            <select name="destination_port" class="form-select">
+              <option value="nhava_sheva">Nhava Sheva (Mumbai)</option>
+              <option value="mundra">Mundra</option>
+              <option value="jebel_ali">Jebel Ali (Dubai)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color:var(--glass-border);">
+          <button type="button" class="btn-glass" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-primary-grad"><i class="bi bi-plus"></i> Add Shipment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

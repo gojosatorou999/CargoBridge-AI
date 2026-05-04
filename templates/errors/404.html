@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}404 Not Found — CargoBridge AI{% endblock %}
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card text-center">
+    <div style="font-size:4rem;margin-bottom:1rem;">🌐</div>
+    <h2 style="font-weight:800;color:var(--accent-blue);">404</h2>
+    <h4 style="margin-bottom:0.75rem;">Page Not Found</h4>
+    <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:2rem;">
+      The page you're looking for doesn't exist or has moved.<br>
+      Check the URL or navigate back to your dashboard.
+    </p>
+    <a href="/dashboard" class="btn-primary-grad" style="text-decoration:none;">
+      <i class="bi bi-house"></i> Back to Dashboard
+    </a>
+  </div>
+</div>
+{% endblock %}

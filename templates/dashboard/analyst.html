@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Analyst Command Center — CargoBridge AI{% endblock %}
+{% block extra_css %}
+<style>
+  #analyst-map { height: 480px; }
+  .chart-wrapper { height: 280px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-bar-chart-line text-accent-blue"></i> Analyst Command Center</h1>
+    <p class="page-subtitle">Live intelligence · AIS map · Disruption heatmap · Analytics</p>
+  </div>
+
+  <!-- ── Live Map Panel ──────────────────────────────────────────────────────── -->
+  <div class="glass-card mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h5 class="mb-0"><i class="bi bi-map text-accent-blue"></i> Live Intelligence Map</h5>
+      <div class="map-controls">
+        <label class="map-layer-toggle">
+          <input type="checkbox" id="toggle-heat" checked>
+          <label for="toggle-heat">Disruption Heatmap</label>
+        </label>
+        <label class="map-layer-toggle ms-3">
+          <input type="checkbox" id="toggle-vessels" checked>
+          <label for="toggle-vessels">AIS Vessels</label>
+        </label>
+      </div>
+    </div>
+    <div id="analyst-map"></div>
+  </div>
+
+  <!-- ── Analytics Charts ────────────────────────────────────────────────────── -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6 col-lg-3">
+      <div class="glass-card h-100">
+        <h6 class="section-label"><i class="bi bi-pie-chart"></i> Disruption Types</h6>
+        <div class="chart-wrapper">
+          <canvas id="chart-type"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="glass-card h-100">
+        <h6 class="section-label"><i class="bi bi-graph-up"></i> Reports Timeline (14d)</h6>
+        <div class="chart-wrapper">
+          <canvas id="chart-timeline"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="glass-card h-100">
+        <h6 class="section-label"><i class="bi bi-bar-chart"></i> Gate Throughput</h6>
+        <div class="chart-wrapper">
+          <canvas id="chart-throughput"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="glass-card h-100">
+        <h6 class="section-label"><i class="bi bi-currency-dollar"></i> D&D Savings (14d)</h6>
+        <div class="chart-wrapper">
+          <canvas id="chart-savings"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Simulator (inline) ──────────────────────────────────────────────────── -->
+  <div class="glass-card mb-4">
+    <h5 class="mb-3"><i class="bi bi-cpu text-accent-purple"></i> Combined Resilience Simulator</h5>
+    <form id="simulator-form" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="sim-input-row">
+        <div>
+          <label class="form-label">Rainfall (mm)</label>
+          <input type="number" id="rainfall_mm" class="form-control" value="0" min="0" max="500" step="1">
+        </div>
+        <div>
+          <label class="form-label">Wind Speed (km/h)</label>
+          <input type="number" id="wind_speed_kmh" class="form-control" value="0" min="0" max="200" step="1">
+        </div>
+        <div>
+          <label class="form-label">Vessel Queue Count</label>
+          <input type="number" id="vessel_queue_count" class="form-control" value="{{ vessels|length }}" min="0" max="50">
+        </div>
+        <div>
+          <label class="form-label">Traffic Density (0–10)</label>
+          <input type="number" id="traffic_density" class="form-control" value="5" min="0" max="10" step="0.5">
+        </div>
+        <div>
+          <label class="form-label">Time of Day</label>
+          <select id="time_of_day" class="form-select">
+            <option value="morning">Morning (06–12)</option>
+            <option value="afternoon">Afternoon (12–18)</option>
+            <option value="evening">Evening (18–22)</option>
+            <option value="night">Night (22–06)</option>
+          </select>
+        </div>
+        <div class="d-flex align-items-end">
+          <button type="submit" class="btn-primary-grad w-100">
+            <i class="bi bi-cpu"></i> Run Simulation
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Simulation results -->
+    <div id="sim-results" style="display:none;" class="mt-3">
+      <hr class="divider-glass">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <div class="sim-result-card">
+            <div class="section-label">Gate Congestion</div>
+            <div id="sim-congestion" class="congestion-badge mt-1">—</div>
+            <div style="font-size:0.8rem;color:#4a5568;margin-top:0.5rem;">Index: <span id="sim-index">—</span></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="sim-result-card">
+            <div class="section-label">D&D Risk</div>
+            <div id="sim-dd-usd" class="stat-value mt-1">—</div>
+            <div style="font-size:0.8rem;color:#4a5568;margin-top:0.25rem;" id="sim-dd-aed">—</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="glass-card">
+            <div class="section-label">Optimal Dispatch Windows</div>
+            <div id="sim-windows"></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="glass-card">
+            <div class="section-label">Sectoral Impact</div>
+            <div style="height:200px;">
+              <canvas id="sim-sector-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Export ────────────────────────────────────────────────────────────────── -->
+  <div class="d-flex gap-3 flex-wrap">
+    <a href="/export/pdf" class="btn-glass"><i class="bi bi-file-earmark-pdf"></i> Export PDF Report</a>
+    <a href="/export/csv" class="btn-glass"><i class="bi bi-filetype-csv"></i> Export CSV Data</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/analyst.js"></script>
+<script src="/static/js/simulator.js"></script>
+{% endblock %}

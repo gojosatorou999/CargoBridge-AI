@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Resilience Simulator — CargoBridge AI{% endblock %}
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-cpu text-accent-purple"></i> Resilience Simulator</h1>
+    <p class="page-subtitle">Model port disruption scenarios — predict congestion, D&D risk, optimal dispatch windows</p>
+  </div>
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="glass-card">
+        <h5 class="mb-3"><i class="bi bi-sliders"></i> Scenario Inputs</h5>
+        <form id="simulator-form" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Rainfall (mm)</label>
+            <input type="number" id="rainfall_mm" class="form-control" value="0" min="0" max="500" step="1">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Wind Speed (km/h)</label>
+            <input type="number" id="wind_speed_kmh" class="form-control" value="0" min="0" max="200">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Vessel Queue Count</label>
+            <input type="number" id="vessel_queue_count" class="form-control" value="5" min="0" max="50">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Traffic Density (0–10)</label>
+            <input type="number" id="traffic_density" class="form-control" value="5" min="0" max="10" step="0.5">
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Time of Day</label>
+            <select id="time_of_day" class="form-select">
+              <option value="morning">Morning (06:00–12:00)</option>
+              <option value="afternoon">Afternoon (12:00–18:00)</option>
+              <option value="evening">Evening (18:00–22:00)</option>
+              <option value="night">Night (22:00–06:00)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-primary-grad w-100" style="justify-content:center;">
+            <i class="bi bi-cpu"></i> Run Simulation
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div id="sim-results" style="display:none;">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <div class="sim-result-card">
+              <div class="section-label">Gate Congestion</div>
+              <div id="sim-congestion" class="mt-2">—</div>
+              <div style="font-size:0.8rem;color:#4a5568;margin-top:0.5rem;">Index: <span id="sim-index">—</span></div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="sim-result-card">
+              <div class="section-label">D&D Risk Exposure</div>
+              <div id="sim-dd-usd" class="stat-value mt-2">—</div>
+              <div id="sim-dd-aed" style="font-size:0.8rem;color:#4a5568;margin-top:0.25rem;">—</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="glass-card">
+              <div class="section-label">Optimal Dispatch Windows</div>
+              <div id="sim-windows" class="mt-2"></div>
+            </div>
+          </div>
+        </div>
+        <div class="glass-card">
+          <h6 class="section-label">Sectoral Impact</h6>
+          <div style="height:300px;"><canvas id="sim-sector-chart"></canvas></div>
+        </div>
+      </div>
+      <div id="sim-placeholder" class="glass-card text-center py-5">
+        <i class="bi bi-cpu" style="font-size:3rem;color:#4a5568;"></i>
+        <p class="mt-2" style="color:#4a5568;">Set your scenario parameters and click Run Simulation.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/simulator.js"></script>
+<script>
+// Hide placeholder when results shown
+const origRender = renderSimResults;
+function renderSimResults(data) {
+  document.getElementById('sim-placeholder').style.display = 'none';
+  origRender(data);
+}
+</script>
+{% endblock %}

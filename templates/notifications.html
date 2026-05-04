@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Notifications — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="d-flex justify-content-between align-items-center page-header">
+    <div>
+      <h1 class="page-title"><i class="bi bi-bell text-accent-blue"></i> Notifications</h1>
+      <p class="page-subtitle">All alerts, slot recommendations, and system messages</p>
+    </div>
+    {% if notifications %}
+    <form method="POST" action="/api/notifications/clear" id="clear-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-glass" onclick="return confirm('Mark all as read?')">
+        <i class="bi bi-check2-all"></i> Mark All Read
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="glass-card">
+    {% if notifications %}
+    <div class="notif-list">
+      {% for n in notifications %}
+      <div class="notif-item {% if not n.is_read %}unread{% endif %}" id="notif-{{ n.id }}">
+        <div class="notif-icon">
+          {% if n.is_alert %}
+            <i class="bi bi-exclamation-triangle-fill text-accent-red"></i>
+          {% elif n.slot_id %}
+            <i class="bi bi-clock-fill text-accent-green"></i>
+          {% elif n.report_id %}
+            <i class="bi bi-flag-fill text-accent-orange"></i>
+          {% else %}
+            <i class="bi bi-info-circle-fill text-accent-blue"></i>
+          {% endif %}
+        </div>
+        <div class="notif-body">
+          <div class="notif-message">{{ n.message }}</div>
+          <div class="notif-time">
+            <i class="bi bi-clock" style="font-size:0.7rem;"></i>
+            {{ n.created_at.strftime('%d %b %Y, %H:%M') }}
+            {% if n.is_alert %} · <span style="color:var(--accent-red);">ALERT</span>{% endif %}
+            {% if not n.is_read %} · <span style="color:var(--accent-blue);">NEW</span>{% endif %}
+          </div>
+        </div>
+        {% if n.slot_id %}
+        <div class="notif-actions">
+          <a href="/dashboard" class="btn-glass btn-glass-green" style="padding:0.25rem 0.7rem;font-size:0.75rem;">
+            <i class="bi bi-eye"></i> View Slot
+          </a>
+        </div>
+        {% endif %}
+        {% if not n.is_read %}
+        <button class="notif-mark-read btn-glass" onclick="markRead({{ n.id }})"
+                style="padding:0.2rem 0.5rem;font-size:0.72rem;flex-shrink:0;">
+          <i class="bi bi-check2"></i>
+        </button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center" style="padding:4rem 2rem;">
+      <i class="bi bi-bell-slash" style="font-size:3rem;color:var(--text-muted);display:block;margin-bottom:1rem;"></i>
+      <div style="color:var(--text-muted);">No notifications yet. You're all caught up!</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.2s;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item.unread { background: rgba(0,212,255,0.03); }
+.notif-item:hover { background: rgba(255,255,255,0.02); }
+.notif-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+.notif-body { flex: 1; }
+.notif-message { font-size: 0.875rem; color: var(--text-primary); margin-bottom: 0.25rem; }
+.notif-time { font-size: 0.72rem; color: var(--text-muted); }
+.notif-actions { flex-shrink: 0; }
+</style>
+
+<script>
+function markRead(id) {
+  fetch(`/api/notification/${id}/read`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
+  }).then(() => {
+    const el = document.getElementById('notif-' + id);
+    if (el) {
+      el.classList.remove('unread');
+      const btn = el.querySelector('.notif-mark-read');
+      if (btn) btn.remove();
+      const newTag = el.querySelector('.notif-time span[style*="accent-blue"]');
+      if (newTag) newTag.remove();
+    }
+  });
+}
+</script>
+{% endblock %}

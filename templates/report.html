@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Submit Disruption Report — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-flag text-accent-orange"></i> Submit Disruption Report</h1>
+    <p class="page-subtitle">Report a disruption on your route — AI scoring runs automatically on submission</p>
+  </div>
+
+  <div class="row g-4 justify-content-center">
+    <div class="col-lg-7">
+      <div class="glass-card">
+        <form method="POST" action="/report" enctype="multipart/form-data" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-4">
+            <label class="form-label"><i class="bi bi-text-paragraph"></i> Description</label>
+            {{ form.description(class="form-control", rows="4", placeholder="Describe what is happening. Be specific — gate blocked, truck queue length, etc.") }}
+            {% if form.description.errors %}
+              <div class="invalid-feedback d-block">{{ form.description.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label"><i class="bi bi-tag"></i> Disruption Type</label>
+            {{ form.disruption_type(class="form-select") }}
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label"><i class="bi bi-geo-alt"></i> Location</label>
+            <div class="d-flex gap-2 mb-2">
+              {{ form.location_name(class="form-control flex-1", placeholder="Gate name, road, landmark…") }}
+              <button type="button" id="gps-btn" class="btn-glass" style="white-space:nowrap;">
+                <i class="bi bi-crosshair"></i> Auto GPS
+              </button>
+            </div>
+            {{ form.latitude(id="latitude") }}
+            {{ form.longitude(id="longitude") }}
+            <div id="report-map" class="mt-2"></div>
+            <p style="font-size:0.75rem;color:#4a5568;margin-top:0.4rem;">Click map or drag marker to adjust position</p>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label"><i class="bi bi-camera"></i> Photo</label>
+            <div class="d-flex gap-2 align-items-center">
+              {{ form.image(id="image", class="form-control") }}
+              <button type="button" id="cam-toggle" class="btn-glass" style="white-space:nowrap;">
+                <i class="bi bi-camera"></i> Back Cam
+              </button>
+            </div>
+            {% if form.image.errors %}
+              <div class="invalid-feedback d-block">{{ form.image.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <div class="d-flex align-items-start gap-2">
+              {{ form.terms(class="form-check-input mt-1", id="terms") }}
+              <label class="form-check-label" for="terms" style="color:#8892b0;font-size:0.875rem;">
+                I confirm this report is accurate to the best of my knowledge. I understand that false reports will affect my credibility score.
+              </label>
+            </div>
+            {% if form.terms.errors %}
+              <div class="invalid-feedback d-block">{{ form.terms.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <button type="submit" class="btn-primary-grad w-100" style="justify-content:center;padding:0.75rem;">
+            <i class="bi bi-send"></i> Submit Report
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Scoring info sidebar -->
+    <div class="col-lg-4">
+      <div class="glass-card mb-4">
+        <h6 class="section-label"><i class="bi bi-cpu"></i> How AI Scoring Works</h6>
+        <div class="mb-3">
+          <div style="font-size:0.8rem;font-weight:600;color:#00d4ff;margin-bottom:0.3rem;">1. Spatial Corroboration (33%)</div>
+          <p style="font-size:0.78rem;color:#4a5568;">How many similar reports exist within 5km in the last 24 hours? Higher cluster density = higher score.</p>
+        </div>
+        <div class="mb-3">
+          <div style="font-size:0.8rem;font-weight:600;color:#00d4ff;margin-bottom:0.3rem;">2. AIS + Weather Alignment (33%)</div>
+          <p style="font-size:0.78rem;color:#4a5568;">Do live vessel positions and weather data support your disruption claim?</p>
+        </div>
+        <div>
+          <div style="font-size:0.8rem;font-weight:600;color:#00d4ff;margin-bottom:0.3rem;">3. Reporter Credibility (34%)</div>
+          <p style="font-size:0.78rem;color:#4a5568;">Your historical approval rate and account age. Port workers get a trust multiplier.</p>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <h6 class="section-label">Confidence Bands</h6>
+        <div class="mb-2"><span class="congestion-badge badge-congestion-low">85–100%</span> <span style="font-size:0.8rem;margin-left:0.5rem;">Highly Reliable — fast-track</span></div>
+        <div class="mb-2"><span class="congestion-badge badge-congestion-medium">60–84%</span> <span style="font-size:0.8rem;margin-left:0.5rem;">Good Confidence — standard queue</span></div>
+        <div class="mb-2"><span class="congestion-badge badge-congestion-high">40–59%</span> <span style="font-size:0.8rem;margin-left:0.5rem;">Questionable — held for review</span></div>
+        <div><span class="congestion-badge badge-congestion-high">0–39%</span> <span style="font-size:0.8rem;margin-left:0.5rem;">Low Confidence — flagged</span></div>
+        <hr class="divider-glass">
+        <p style="font-size:0.75rem;color:#4a5568;">All reports require human approval before alerts are dispatched.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="theme-color" content="#00d4ff">
+  <title>{% block title %}CargoBridge AI{% endblock %}</title>
+
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Offline banner ──────────────────────────────────────────────────────── -->
+<div id="offline-banner" class="offline-banner">
+  <i class="bi bi-wifi-off"></i> You are offline — showing cached data. Reconnecting…
+</div>
+
+<!-- ── Flash messages ─────────────────────────────────────────────────────── -->
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash-msg flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+{% if current_user.is_authenticated %}
+<!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/">
+      CargoBridge AI
+      <span class="tagline">Predictive Dispatch & Disruption Intelligence</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+            aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+        <li class="nav-item">
+          <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2"></i> {{ strings.dashboard }}</a>
+        </li>
+
+        {% if current_user.role in ('port_worker','admin','analyst') %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-exclamation-triangle"></i> {{ strings.reports }}
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/report"><i class="bi bi-plus-circle"></i> Submit Report</a></li>
+            <li><a class="dropdown-item" href="/api/reports"><i class="bi bi-list-ul"></i> All Reports</a></li>
+          </ul>
+        </li>
+        {% endif %}
+
+        {% if current_user.role in ('truck_driver','msme_exporter','admin','analyst') %}
+        <li class="nav-item">
+          <a class="nav-link" href="/report"><i class="bi bi-flag"></i> Report</a>
+        </li>
+        {% endif %}
+
+        {% if current_user.role in ('msme_exporter','admin','analyst') %}
+        <li class="nav-item">
+          <a class="nav-link" href="/shipments"><i class="bi bi-box-seam"></i> {{ strings.shipments }}</a>
+        </li>
+        {% endif %}
+
+        {% if current_user.role in ('analyst','admin') %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-bar-chart-line"></i> {{ strings.analytics }}
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/dashboard/analyst"><i class="bi bi-map"></i> Live Map</a></li>
+            <li><a class="dropdown-item" href="/simulator"><i class="bi bi-cpu"></i> Simulator</a></li>
+            <li><div class="dropdown-divider"></div></li>
+            <li><a class="dropdown-item" href="/export/pdf"><i class="bi bi-file-earmark-pdf"></i> {{ strings.export_pdf }}</a></li>
+            <li><a class="dropdown-item" href="/export/csv"><i class="bi bi-filetype-csv"></i> {{ strings.export_csv }}</a></li>
+          </ul>
+        </li>
+        {% endif %}
+
+        {% if current_user.role == 'admin' %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-shield-check"></i> Admin
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/admin/users"><i class="bi bi-people"></i> Users</a></li>
+            <li><a class="dropdown-item" href="/admin/audit-log"><i class="bi bi-journal-text"></i> Audit Log</a></li>
+            <li><a class="dropdown-item" href="/agencies"><i class="bi bi-building"></i> Agencies</a></li>
+          </ul>
+        </li>
+        {% endif %}
+
+        <li class="nav-item">
+          <a class="nav-link" href="/leaderboard"><i class="bi bi-trophy"></i> {{ strings.leaderboard }}</a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="/feed"><i class="bi bi-camera-reels"></i> {{ strings.feed }}</a>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="/agencies"><i class="bi bi-building"></i> {{ strings.agencies }}</a>
+        </li>
+
+      </ul>
+
+      <div class="d-flex align-items-center gap-3">
+
+        <!-- Install PWA button -->
+        <button id="install-btn" class="btn-glass d-none" style="padding:0.3rem 0.8rem;font-size:0.8rem">
+          <i class="bi bi-download"></i> Install App
+        </button>
+
+        <!-- Notification bell -->
+        <a href="/notifications" class="bell-wrapper">
+          <i class="bi bi-bell bell-icon"></i>
+          <span id="notif-badge" class="bell-badge" style="display:{{ 'flex' if unread_count > 0 else 'none' }}">
+            {{ unread_count }}
+          </span>
+        </a>
+
+        <!-- User menu -->
+        <div class="dropdown">
+          <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i>
+            <span class="d-none d-md-inline">{{ current_user.username }}</span>
+            <small class="d-none d-md-inline text-muted-custom" style="font-size:0.7rem">({{ current_user.role.replace('_',' ').title() }})</small>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> {{ strings.profile }}</a></li>
+            <li><div class="dropdown-divider"></div></li>
+            <li><a class="dropdown-item text-accent-red" href="/logout"><i class="bi bi-box-arrow-right"></i> {{ strings.logout }}</a></li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Page spacer for fixed navbar -->
+<div style="height: 70px;"></div>
+{% endif %}
+
+<!-- ── Main content ────────────────────────────────────────────────────────── -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ── Scripts ─────────────────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/static/js/script.js"></script>
+<script src="/static/js/pwa.js"></script>
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

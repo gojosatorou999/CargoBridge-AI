@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — CargoBridge AI{% endblock %}
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-trophy text-accent-yellow"></i> Leaderboard</h1>
+    <p class="page-subtitle">Weekly rankings · Individual drivers · Company compliance</p>
+  </div>
+
+  <div class="row g-4">
+    <!-- Individual -->
+    <div class="col-lg-6">
+      <div class="glass-card">
+        <h5 class="mb-3"><i class="bi bi-person-badge text-accent-blue"></i> Individual — Top Drivers</h5>
+        {% for entry in individual %}
+        <div class="leaderboard-row">
+          <div class="lb-rank {{ 'gold' if entry.rank==1 else 'silver' if entry.rank==2 else 'bronze' if entry.rank==3 else '' }}">
+            {% if entry.rank <= 3 %}{{ ['🥇','🥈','🥉'][entry.rank-1] }}{% else %}{{ entry.rank }}{% endif %}
+          </div>
+          <div>
+            <div class="lb-name">{{ entry.user.username if entry.user else 'Unknown' }}</div>
+            <div style="font-size:0.72rem;color:#4a5568;">{{ entry.user.level if entry.user else '' }}</div>
+          </div>
+          <div class="lb-score">{{ entry.score|int }} pts</div>
+        </div>
+        {% else %}
+        <p style="color:#4a5568;font-size:0.875rem;">No rankings yet. Be the first to file a report!</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Company -->
+    <div class="col-lg-6">
+      <div class="glass-card">
+        <h5 class="mb-3"><i class="bi bi-building text-accent-green"></i> Company — Top Exporters</h5>
+        {% for entry in company %}
+        <div class="leaderboard-row">
+          <div class="lb-rank {{ 'gold' if entry.rank==1 else 'silver' if entry.rank==2 else 'bronze' if entry.rank==3 else '' }}">
+            {% if entry.rank <= 3 %}{{ ['🥇','🥈','🥉'][entry.rank-1] }}{% else %}{{ entry.rank }}{% endif %}
+          </div>
+          <div>
+            <div class="lb-name">{{ entry.user.company_name or entry.user.username if entry.user else 'Unknown' }}</div>
+            <div style="font-size:0.72rem;color:#4a5568;">D&D Savings</div>
+          </div>
+          <div class="lb-score text-accent-green">${{ entry.score|int }}</div>
+        </div>
+        {% else %}
+        <p style="color:#4a5568;font-size:0.875rem;">No company rankings yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Points table reference -->
+  <div class="glass-card mt-4">
+    <h5 class="mb-3"><i class="bi bi-star text-accent-yellow"></i> Points Table</h5>
+    <div class="table-responsive">
+      <table class="table-glass w-100">
+        <thead><tr><th>Action</th><th>Points</th></tr></thead>
+        <tbody>
+          <tr><td>File a disruption report that gets approved</td><td class="text-accent-green font-mono">+30</td></tr>
+          <tr><td>File a report that gets rejected</td><td class="text-accent-red font-mono">−5</td></tr>
+          <tr><td>Accept a slot recommendation</td><td class="text-accent-green font-mono">+10</td></tr>
+          <tr><td>Complete a trip on time</td><td class="text-accent-green font-mono">+20</td></tr>
+          <tr><td>Acknowledge a disruption alert</td><td class="text-accent-green font-mono">+5</td></tr>
+          <tr><td>7-day activity streak bonus</td><td class="text-accent-yellow font-mono">+50</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

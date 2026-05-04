@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-shield-check text-accent-blue"></i> Admin Dashboard</h1>
+    <p class="page-subtitle">Full platform overview · All disruptions · User management</p>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Pending Reports</div>
+        <div class="stat-value text-accent-orange">{{ pending }}</div>
+        <div class="stat-sub">Awaiting approval</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Agencies Pending</div>
+        <div class="stat-value text-accent-yellow">{{ agencies_pending }}</div>
+        <div class="stat-sub">Need approval</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Total D&D Savings</div>
+        <div class="stat-value text-accent-green">${{ '%.0f'|format(total_savings) }}</div>
+        <div class="stat-sub">All time</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Recent Reports</div>
+        <div class="stat-value">{{ reports|length }}</div>
+        <div class="stat-sub">Last 20</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Reports table -->
+    <div class="col-lg-8">
+      <div class="glass-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-exclamation-triangle text-accent-orange"></i> Recent Disruption Reports</h5>
+          <div class="d-flex gap-2">
+            <a href="/export/pdf" class="btn-glass"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+            <a href="/export/csv" class="btn-glass"><i class="bi bi-filetype-csv"></i> CSV</a>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table-glass w-100">
+            <thead>
+              <tr>
+                <th>ID</th><th>Type</th><th>Location</th><th>Confidence</th><th>Status</th><th>Submitted</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in reports %}
+              <tr>
+                <td class="font-mono text-accent-blue">#{{ r.id }}</td>
+                <td>{{ r.disruption_type.replace('_',' ').title() }}</td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.location_name or '—' }}</td>
+                <td>
+                  {% set sc = r.confidence_score|int %}
+                  {% if sc >= 85 %}
+                    <span class="congestion-badge badge-congestion-low">{{ sc }}%</span>
+                  {% elif sc >= 60 %}
+                    <span class="congestion-badge badge-congestion-medium">{{ sc }}%</span>
+                  {% else %}
+                    <span class="congestion-badge badge-congestion-high">{{ sc }}%</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if r.verification_status == 'approved' %}
+                    <span class="congestion-badge badge-congestion-low">Approved</span>
+                  {% elif r.verification_status == 'rejected' %}
+                    <span class="congestion-badge badge-congestion-high">Rejected</span>
+                  {% else %}
+                    <span class="congestion-badge badge-congestion-medium">Pending</span>
+                  {% endif %}
+                </td>
+                <td style="font-size:0.78rem;color:#4a5568;">{{ r.submitter.username if r.submitter else '—' }}</td>
+                <td>
+                  {% if r.verification_status == 'pending' %}
+                    <form method="POST" action="/report/{{ r.id }}/approve" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn-glass btn-glass-green" style="padding:0.2rem 0.6rem;font-size:0.75rem;">
+                        <i class="bi bi-check"></i>
+                      </button>
+                    </form>
+                    <a href="/report/{{ r.id }}/reject" class="btn-glass btn-glass-red ms-1" style="padding:0.2rem 0.6rem;font-size:0.75rem;">
+                      <i class="bi bi-x"></i>
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="text-center" style="padding:2rem;color:#4a5568;">No reports yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent users -->
+    <div class="col-lg-4">
+      <div class="glass-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-people text-accent-blue"></i> Recent Users</h5>
+          <a href="/admin/users" class="btn-glass" style="padding:0.25rem 0.7rem;font-size:0.78rem;">View All</a>
+        </div>
+        {% for u in users %}
+        <div class="d-flex align-items-center gap-2 py-2" style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <i class="bi bi-person-circle text-accent-blue" style="font-size:1.3rem;"></i>
+          <div class="flex-1">
+            <div style="font-size:0.875rem;font-weight:500;">{{ u.username }}</div>
+            <div style="font-size:0.72rem;color:#4a5568;">{{ u.role.replace('_',' ').title() }}</div>
+          </div>
+          <span style="font-size:0.7rem;color:#4a5568;">{{ u.created_at.strftime('%d %b') }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Quick links -->
+      <div class="glass-card mt-4">
+        <h6 class="section-label">Quick Actions</h6>
+        <div class="d-grid gap-2">
+          <a href="/admin/users" class="btn-glass"><i class="bi bi-people"></i> Manage Users</a>
+          <a href="/admin/audit-log" class="btn-glass"><i class="bi bi-journal-text"></i> Audit Log</a>
+          <a href="/agencies" class="btn-glass"><i class="bi bi-building"></i> Agencies</a>
+          <a href="/dashboard/analyst" class="btn-glass"><i class="bi bi-map"></i> Live Map</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

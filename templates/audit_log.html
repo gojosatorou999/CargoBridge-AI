@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-journal-text text-accent-blue"></i> Audit Log</h1>
+    <p class="page-subtitle">Every user action · Timestamped · Tamper-evident</p>
+  </div>
+
+  <div class="glass-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div style="font-size:0.85rem;color:var(--text-muted);">
+        Page {{ logs.page }} of {{ logs.pages }} · {{ logs.total }} total events
+      </div>
+      <a href="/export/csv" class="btn-glass" style="font-size:0.8rem;">
+        <i class="bi bi-filetype-csv"></i> Export CSV
+      </a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table-glass w-100">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Entity</th>
+            <th>Entity ID</th>
+            <th>IP Address</th>
+            <th>Metadata</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs.items %}
+          <tr>
+            <td class="font-mono" style="font-size:0.78rem;white-space:nowrap;">
+              {{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+            </td>
+            <td>
+              {% if log.user %}
+                <span style="font-weight:500;">{{ log.user.username }}</span>
+                <span style="font-size:0.7rem;color:var(--text-muted);"> ({{ log.user.role }})</span>
+              {% else %}
+                <span style="color:var(--text-muted);">System</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="font-mono" style="font-size:0.8rem;color:var(--accent-blue);">
+                {{ log.action }}
+              </span>
+            </td>
+            <td style="font-size:0.8rem;color:var(--text-muted);">{{ log.entity_type or '—' }}</td>
+            <td class="font-mono" style="font-size:0.78rem;">{{ log.entity_id or '—' }}</td>
+            <td style="font-size:0.78rem;color:var(--text-muted);">{{ log.ip_address or '—' }}</td>
+            <td style="font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);">
+              {% if log.metadata_ %}{{ log.metadata_ | tojson }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center" style="padding:3rem;color:var(--text-muted);">
+              <i class="bi bi-journal" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+              No audit entries yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if logs.pages > 1 %}
+    <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+      {% if logs.has_prev %}
+      <a href="?page={{ logs.prev_num }}" class="btn-glass" style="padding:0.3rem 0.75rem;font-size:0.8rem;">
+        <i class="bi bi-chevron-left"></i> Prev
+      </a>
+      {% endif %}
+      {% for p in logs.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="?page={{ p }}" class="btn-glass {% if p == logs.page %}btn-glass-green{% endif %}"
+             style="padding:0.3rem 0.65rem;font-size:0.8rem;font-family:var(--font-mono);">
+            {{ p }}
+          </a>
+        {% else %}
+          <span style="color:var(--text-muted);align-self:center;">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if logs.has_next %}
+      <a href="?page={{ logs.next_num }}" class="btn-glass" style="padding:0.3rem 0.75rem;font-size:0.8rem;">
+        Next <i class="bi bi-chevron-right"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

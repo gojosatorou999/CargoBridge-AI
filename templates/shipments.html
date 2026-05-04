@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Shipments — CargoBridge AI{% endblock %}
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h1 class="page-title"><i class="bi bi-box-seam text-accent-blue"></i> Shipment Tracker</h1>
+      <p class="page-subtitle">Live container status · D&D risk monitoring · ETA tracking</p>
+    </div>
+    <button class="btn-primary-grad" data-bs-toggle="modal" data-bs-target="#addShipmentModal">
+      <i class="bi bi-plus"></i> Add Shipment
+    </button>
+  </div>
+
+  {% if shipments %}
+  <div class="row g-4">
+    {% for s in shipments %}
+    <div class="col-lg-6">
+      <div class="glass-card" style="border-color:{{ 'rgba(255,71,87,0.3)' if s.dd_risk_flag else 'rgba(255,255,255,0.05)' }};">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <span class="font-mono text-accent-blue" style="font-size:1rem;font-weight:700;">{{ s.container_number }}</span>
+          <div class="d-flex gap-1 align-items-center">
+            {% if s.dd_risk_flag %}
+              <span class="congestion-badge badge-congestion-high"><i class="bi bi-exclamation-triangle-fill"></i> D&D RISK</span>
+            {% endif %}
+          </div>
+        </div>
+        <div style="font-size:0.85rem;color:#8892b0;margin-bottom:0.75rem;">
+          {{ s.vessel_name or 'Unknown Vessel' }}
+          {% if s.voyage_number %} · Voyage {{ s.voyage_number }}{% endif %}
+        </div>
+        <div class="pipeline mb-3">
+          {% for step in ['Origin', 'In Transit', 'At Gate', 'Loaded', 'On Vessel', 'Delivered'] %}
+          {% set done = loop.index0 < ['Origin','In Transit','At Gate','Loaded','On Vessel','Delivered'].index(s.status) %}
+          <div class="pipeline-step {{ 'active' if s.status == step else 'done' if done else '' }}">{{ step }}</div>
+          {% endfor %}
+        </div>
+        <div class="row g-2" style="font-size:0.8rem;">
+          <div class="col-6"><span style="color:#4a5568;">Origin:</span> <strong>{{ s.origin_city or '—' }}</strong></div>
+          <div class="col-6"><span style="color:#4a5568;">Dest:</span> <strong>{{ s.destination_port.replace('_',' ').title() if s.destination_port else '—' }}</strong></div>
+          <div class="col-6"><span style="color:#4a5568;">ETA:</span> <strong style="color:#00d4ff;">{{ s.current_eta.strftime('%d %b %H:%M') if s.current_eta else '—' }}</strong></div>
+          <div class="col-6"><span style="color:#4a5568;">Free time:</span> <strong style="color:{{ '#ff4757' if s.dd_risk_flag else '#8892b0' }};">{{ s.free_time_expiry.strftime('%d %b') if s.free_time_expiry else '—' }}</strong></div>
+          {% if s.dd_saving_usd > 0 %}
+          <div class="col-12"><span style="color:#4a5568;">D&D Saved:</span> <strong class="text-accent-green">${{ '%.2f'|format(s.dd_saving_usd) }}</strong></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-box" style="font-size:3rem;color:#4a5568;"></i>
+    <p class="mt-3" style="color:#4a5568;">No shipments yet. Click "Add Shipment" to start tracking.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Add Shipment Modal -->
+<div class="modal fade" id="addShipmentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--glass-border);">
+      <div class="modal-header" style="border-color:var(--glass-border);">
+        <h5 class="modal-title">Add Shipment</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="/shipment/create">
+        <div class="modal-body">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Container Number *</label>
+            <input type="text" name="container_number" class="form-control" placeholder="MSCU1234567" required>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Vessel Name</label>
+              <input type="text" name="vessel_name" class="form-control" placeholder="MSC GULSUN">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Voyage Number</label>
+              <input type="text" name="voyage_number" class="form-control" placeholder="W1234E">
+            </div>
+          </div>
+          <div class="mt-2 mb-3">
+            <label class="form-label">Origin City</label>
+            <input type="text" name="origin_city" class="form-control" placeholder="Mumbai">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Destination Port</label>
+            <select name="destination_port" class="form-select">
+              <option value="nhava_sheva">Nhava Sheva (Mumbai)</option>
+              <option value="mundra">Mundra</option>
+              <option value="jebel_ali">Jebel Ali (Dubai)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color:var(--glass-border);">
+          <button type="button" class="btn-glass" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-primary-grad"><i class="bi bi-plus"></i> Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

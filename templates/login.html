@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{% if register %}Create Account{% else %}Sign In{% endif %} — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">CargoBridge AI</div>
+    <div class="auth-tagline">Predictive Dispatch & Disruption Intelligence</div>
+
+    {% if not register %}
+    <!-- LOGIN FORM -->
+    <form method="POST" action="/login" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label"><i class="bi bi-person"></i> Username</label>
+        {{ form.username(class="form-control", placeholder="Enter username") }}
+        {% if form.username.errors %}
+          <div class="invalid-feedback d-block">{{ form.username.errors[0] }}</div>
+        {% endif %}
+      </div>
+      <div class="mb-4">
+        <label class="form-label"><i class="bi bi-lock"></i> Password</label>
+        {{ form.password(class="form-control", placeholder="Enter password") }}
+        {% if form.password.errors %}
+          <div class="invalid-feedback d-block">{{ form.password.errors[0] }}</div>
+        {% endif %}
+      </div>
+      <button type="submit" class="btn-primary-grad w-100" style="justify-content:center;">
+        <i class="bi bi-box-arrow-in-right"></i> Sign In
+      </button>
+    </form>
+    <p class="text-center mt-3" style="color:#4a5568;font-size:0.85rem;">
+      New here? <a href="/register">Create account</a>
+    </p>
+
+    {% else %}
+    <!-- REGISTER FORM -->
+    <form method="POST" action="/register" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label"><i class="bi bi-person"></i> Username</label>
+          {{ form.username(class="form-control", placeholder="Choose username") }}
+          {% if form.username.errors %}<div class="invalid-feedback d-block">{{ form.username.errors[0] }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label"><i class="bi bi-envelope"></i> Email</label>
+          {{ form.email(class="form-control", placeholder="your@email.com") }}
+          {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors[0] }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label"><i class="bi bi-briefcase"></i> Role</label>
+          {{ form.role(class="form-select") }}
+        </div>
+        <div class="col-12">
+          <label class="form-label"><i class="bi bi-building"></i> Company Name <small style="color:#4a5568">(optional)</small></label>
+          {{ form.company_name(class="form-control", placeholder="Your company") }}
+        </div>
+        <div class="col-12">
+          <label class="form-label"><i class="bi bi-whatsapp"></i> WhatsApp Number <small style="color:#4a5568">(with country code)</small></label>
+          {{ form.whatsapp_number(class="form-control", placeholder="+919876543210") }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label"><i class="bi bi-lock"></i> Password</label>
+          {{ form.password(class="form-control", placeholder="Min 8 chars") }}
+          {% if form.password.errors %}<div class="invalid-feedback d-block">{{ form.password.errors[0] }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label"><i class="bi bi-lock-fill"></i> Confirm</label>
+          {{ form.confirm_password(class="form-control", placeholder="Repeat password") }}
+          {% if form.confirm_password.errors %}<div class="invalid-feedback d-block">{{ form.confirm_password.errors[0] }}</div>{% endif %}
+        </div>
+        <div class="col-12 mt-2">
+          <button type="submit" class="btn-primary-grad w-100" style="justify-content:center;">
+            <i class="bi bi-person-plus"></i> Create Account
+          </button>
+        </div>
+      </div>
+    </form>
+    <p class="text-center mt-3" style="color:#4a5568;font-size:0.85rem;">
+      Already have an account? <a href="/login">Sign in</a>
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

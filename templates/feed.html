@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Trip Feed — CargoBridge AI{% endblock %}
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h1 class="page-title"><i class="bi bi-camera-reels text-accent-blue"></i> Trip Reels</h1>
+      <p class="page-subtitle">Global trip feed · Share completions · Celebrate on-time runs</p>
+    </div>
+    <button class="btn-primary-grad" data-bs-toggle="modal" data-bs-target="#shareModal">
+      <i class="bi bi-share"></i> Share Trip
+    </button>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      {% for post in posts %}
+      <div class="post-card">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-person-circle text-accent-blue" style="font-size:1.5rem;"></i>
+          <div>
+            <div class="post-author">{{ post.author.username if post.author else 'Unknown' }}</div>
+            <div class="post-meta">{{ post.created_at.strftime('%d %b %Y · %H:%M') }} · {{ post.author.level if post.author else '' }}</div>
+          </div>
+          {% if post.on_time %}
+            <span class="ms-auto congestion-badge badge-congestion-low"><i class="bi bi-check-circle-fill"></i> On Time</span>
+          {% else %}
+            <span class="ms-auto congestion-badge badge-congestion-high">Delayed</span>
+          {% endif %}
+        </div>
+        <p style="color:#e8eaf6;font-size:0.9rem;margin-bottom:0.75rem;">{{ post.route_description }}</p>
+        {% if post.photo_file %}
+          <img src="/static/{{ post.photo_file }}" alt="Trip photo" class="post-photo">
+        {% endif %}
+        <div class="d-flex align-items-center gap-3 mt-2">
+          <button class="like-btn {{ 'liked' if current_user.id in post.likes.with_entities('user_id')|list else '' }}"
+                  data-post="{{ post.id }}"
+                  onclick="likePost({{ post.id }})">
+            <i class="bi bi-heart-fill"></i>
+            <span id="likes-{{ post.id }}">{{ post.likes.count() }}</span>
+          </button>
+          <span style="font-size:0.75rem;color:#4a5568;"><i class="bi bi-star"></i> {{ post.points_earned }} pts earned</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-camera-reels" style="font-size:3rem;color:#4a5568;"></i>
+        <p class="mt-2" style="color:#4a5568;">No trip posts yet. Share your first trip!</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Share Trip Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--glass-border);">
+      <div class="modal-header" style="border-color:var(--glass-border);">
+        <h5 class="modal-title">Share Your Trip</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="/post/create" enctype="multipart/form-data">
+        <div class="modal-body">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Trip Summary *</label>
+            <textarea name="route_description" class="form-control" rows="3" placeholder="e.g. Mumbai to Nhava Sheva Gate 3 — smooth run, 45 min wait saved" required></textarea>
+          </div>
+          <div class="mb-3 d-flex align-items-center gap-2">
+            <input type="checkbox" name="on_time" id="on_time" value="1" class="form-check-input">
+            <label for="on_time" class="form-check-label" style="color:#8892b0;">Completed on time</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Photo (optional)</label>
+            <input type="file" name="photo" class="form-control" accept="image/*">
+          </div>
+        </div>
+        <div class="modal-footer" style="border-color:var(--glass-border);">
+          <button type="button" class="btn-glass" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-primary-grad"><i class="bi bi-send"></i> Share</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

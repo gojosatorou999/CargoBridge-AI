@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Reject Report — CargoBridge AI{% endblock %}
+{% block content %}
+<div class="page-wrapper">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="glass-card">
+        <h4 class="mb-3"><i class="bi bi-x-circle text-accent-red"></i> Reject Report #{{ report.id }}</h4>
+        <p style="color:#8892b0;font-size:0.875rem;margin-bottom:1.5rem;">
+          <strong>{{ report.disruption_type.replace('_',' ').title() }}</strong> — {{ report.location_name or 'Unknown location' }}<br>
+          {{ report.description[:200] }}
+        </p>
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-4">
+            <label class="form-label">Reason for Rejection</label>
+            {{ form.rejected_reason(class="form-control", rows="4", placeholder="Explain why this report is being rejected…") }}
+            {% if form.rejected_reason.errors %}
+              <div class="invalid-feedback d-block">{{ form.rejected_reason.errors[0] }}</div>
+            {% endif %}
+          </div>
+          <div class="d-flex gap-2">
+            <a href="/dashboard/port-worker" class="btn-glass">Cancel</a>
+            <button type="submit" class="btn-glass btn-glass-red">
+              <i class="bi bi-x-circle"></i> Reject Report
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

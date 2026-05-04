@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Port Worker Dashboard — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-anchor text-accent-blue"></i> Port Worker Dashboard</h1>
+    <p class="page-subtitle">Disruption approval queue · Vessel feed · Active slots</p>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Pending Approval</div>
+        <div class="stat-value text-accent-orange">{{ pending_reports|length }}</div>
+        <div class="stat-sub">Reports in queue</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Active Slots</div>
+        <div class="stat-value text-accent-blue">{{ slots|length }}</div>
+        <div class="stat-sub">Assigned today</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Vessels in Feed</div>
+        <div class="stat-value">{{ vessels|length }}</div>
+        <div class="stat-sub">AIS live</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Wind Speed</div>
+        <div class="stat-value text-accent-yellow">{{ weather.wind_speed_kmh|int if weather else '—' }}<small style="font-size:1rem"> km/h</small></div>
+        <div class="stat-sub">{{ weather.temp_c|int if weather else '—' }}°C at port</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Approval queue -->
+    <div class="col-lg-7">
+      <div class="glass-card">
+        <h5 class="mb-3"><i class="bi bi-list-check text-accent-orange"></i> Disruption Approval Queue</h5>
+        {% for r in pending_reports %}
+        <div class="glass-card mb-3" style="border-color:rgba(255,107,53,0.2);">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <span class="font-mono text-accent-blue" style="font-size:0.8rem;">#{{ r.id }}</span>
+              <strong class="ms-2">{{ r.disruption_type.replace('_',' ').title() }}</strong>
+              {% set sc = r.confidence_score|int %}
+              {% if sc >= 85 %}
+                <span class="congestion-badge badge-congestion-low ms-2">{{ sc }}% Highly Reliable</span>
+              {% elif sc >= 60 %}
+                <span class="congestion-badge badge-congestion-medium ms-2">{{ sc }}% Good</span>
+              {% elif sc >= 40 %}
+                <span class="congestion-badge badge-congestion-high ms-2">{{ sc }}% Questionable</span>
+              {% else %}
+                <span class="congestion-badge badge-congestion-high ms-2">{{ sc }}% Low</span>
+              {% endif %}
+            </div>
+            <span style="font-size:0.75rem;color:#4a5568;">{{ r.created_at.strftime('%H:%M %d %b') }}</span>
+          </div>
+          <p style="font-size:0.875rem;color:#8892b0;margin-bottom:0.5rem;">{{ r.description[:120] }}{% if r.description|length > 120 %}…{% endif %}</p>
+          <div style="font-size:0.78rem;color:#4a5568;margin-bottom:0.75rem;">
+            <i class="bi bi-geo-alt"></i> {{ r.location_name or 'Unknown location' }}
+            &nbsp;·&nbsp;
+            <i class="bi bi-person"></i> {{ r.submitter.username if r.submitter else 'Unknown' }}
+            ({{ r.source }})
+          </div>
+          {% if r.image_file %}
+          <img src="/static/{{ r.image_file }}" alt="Report photo" style="max-height:120px;border-radius:8px;margin-bottom:0.75rem;object-fit:cover;">
+          {% endif %}
+          <!-- Score breakdown -->
+          {% if r.parameter_breakdown %}
+          <div style="font-size:0.75rem;color:#4a5568;margin-bottom:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
+            <span>Spatial: <strong style="color:#00d4ff">{{ r.parameter_breakdown.spatial_corroboration|round(0)|int }}%</strong></span>
+            <span>AIS/Weather: <strong style="color:#00d4ff">{{ r.parameter_breakdown.ais_weather_alignment|round(0)|int }}%</strong></span>
+            <span>Credibility: <strong style="color:#00d4ff">{{ r.parameter_breakdown.reporter_credibility|round(0)|int }}%</strong></span>
+          </div>
+          {% endif %}
+          <div class="d-flex gap-2">
+            <form method="POST" action="/report/{{ r.id }}/approve">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-glass btn-glass-green"><i class="bi bi-check-circle"></i> Approve</button>
+            </form>
+            <a href="/report/{{ r.id }}/reject" class="btn-glass btn-glass-red"><i class="bi bi-x-circle"></i> Reject</a>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-4" style="color:#4a5568;">
+          <i class="bi bi-check-all" style="font-size:2rem;"></i>
+          <p class="mt-2">Queue is clear.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <!-- Vessel ETA feed -->
+      <div class="glass-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-water text-accent-blue"></i> Vessel ETA Feed</h5>
+        {% for v in vessels %}
+        <div class="d-flex align-items-center gap-2 py-2" style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <span style="font-size:1.3rem;">🚢</span>
+          <div class="flex-1">
+            <div style="font-size:0.85rem;font-weight:600;">{{ v.vessel_name or 'Unknown' }}</div>
+            <div style="font-size:0.72rem;color:#4a5568;">{{ v.destination_port.replace('_',' ').title() if v.destination_port else '—' }} · {{ v.speed_knots or 0 }} kn</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.75rem;color:#00d4ff;">{{ v.eta.strftime('%d %b %H:%M') if v.eta else 'ETA unknown' }}</div>
+          </div>
+        </div>
+        {% else %}
+        <p style="color:#4a5568;font-size:0.875rem;">No vessel data available.</p>
+        {% endfor %}
+      </div>
+
+      <!-- Submit a report -->
+      <div class="glass-card">
+        <h6 class="section-label">Actions</h6>
+        <div class="d-grid gap-2">
+          <a href="/report" class="btn-glass"><i class="bi bi-flag"></i> Submit Disruption Report</a>
+          <a href="/notifications" class="btn-glass"><i class="bi bi-bell"></i> Notifications</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

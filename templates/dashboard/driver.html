@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Driver Dashboard — CargoBridge AI{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1 class="page-title"><i class="bi bi-truck text-accent-blue"></i> Driver Dashboard</h1>
+    <p class="page-subtitle">{{ strings.welcome }}, {{ current_user.username }} · {{ current_user.level }}</p>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Points</div>
+        <div class="stat-value">{{ current_user.points }}</div>
+        <div class="stat-sub">{{ current_user.level }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">Reports Filed</div>
+        <div class="stat-value text-accent-orange">{{ my_reports|length }}</div>
+        <div class="stat-sub">Recent</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">My Rank</div>
+        <div class="stat-value text-accent-yellow">#{{ my_rank.rank if my_rank else '—' }}</div>
+        <div class="stat-sub">Individual board</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-label">WhatsApp</div>
+        <div class="stat-value" style="font-size:1.3rem;">
+          {% if current_user.whatsapp_number %}
+            <i class="bi bi-whatsapp text-accent-green"></i>
+          {% else %}
+            <i class="bi bi-whatsapp text-muted-custom"></i>
+          {% endif %}
+        </div>
+        <div class="stat-sub">{{ 'Linked' if current_user.whatsapp_number else 'Not linked' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Active slot card -->
+    <div class="col-lg-5">
+      {% if my_slot %}
+      <div class="slot-card active-slot mb-4">
+        <div class="section-label"><i class="bi bi-clock text-accent-green"></i> Active Slot Recommendation</div>
+        <div class="slot-time">{{ my_slot.recommended_slot_time.strftime('%H:%M') }}</div>
+        <div class="slot-meta">{{ my_slot.recommended_slot_time.strftime('%d %b %Y') }}</div>
+        <div class="d-flex gap-2 mt-2 flex-wrap">
+          {% if my_slot.congestion_level == 'Low' %}
+            <span class="congestion-badge badge-congestion-low"><span class="congestion-dot dot-low"></span>Low Congestion</span>
+          {% elif my_slot.congestion_level == 'Medium' %}
+            <span class="congestion-badge badge-congestion-medium"><span class="congestion-dot dot-medium"></span>Medium Congestion</span>
+          {% else %}
+            <span class="congestion-badge badge-congestion-high"><span class="congestion-dot dot-high"></span>High Congestion</span>
+          {% endif %}
+          <span style="font-size:0.8rem;color:#8892b0;"><i class="bi bi-cloud"></i> {{ my_slot.weather_condition }}</span>
+          <span style="font-size:0.8rem;color:#8892b0;"><i class="bi bi-hourglass"></i> Est. wait: {{ my_slot.estimated_wait_mins }} min</span>
+        </div>
+        <div class="savings-row mt-3">
+          <div class="saving-item">
+            <div class="saving-value">{{ my_slot.carbon_saving_kg }} kg</div>
+            <div class="saving-label">CO₂ saved</div>
+          </div>
+          <div class="saving-item">
+            <div class="saving-value">{{ my_slot.fuel_saving_litres }}L</div>
+            <div class="saving-label">Fuel saved</div>
+          </div>
+          <div class="saving-item">
+            <div class="saving-value text-accent-red">${{ my_slot.dd_risk_usd }}</div>
+            <div class="saving-label">D&D risk if missed</div>
+          </div>
+          <div class="saving-item">
+            <div class="saving-value text-accent-red">AED {{ my_slot.dd_risk_aed }}</div>
+            <div class="saving-label">AED equivalent</div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button onclick="acceptSlot({{ my_slot.id }})" class="btn-glass btn-glass-green flex-1" style="justify-content:center;">
+            <i class="bi bi-check-circle"></i> Accept Slot
+          </button>
+          <button onclick="requestAlternate({{ my_slot.id }})" class="btn-glass btn-glass-orange flex-1" style="justify-content:center;">
+            <i class="bi bi-arrow-repeat"></i> Request Alternate
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <div class="glass-card mb-4 text-center py-4">
+        <i class="bi bi-calendar-check" style="font-size:2.5rem;color:#4a5568;"></i>
+        <p class="mt-2" style="color:#4a5568;">No active slot recommendation.</p>
+        <p style="font-size:0.8rem;color:#4a5568;">Slots appear here when an approved disruption affects your lane.</p>
+      </div>
+      {% endif %}
+
+      <!-- Level progress -->
+      <div class="glass-card mb-4">
+        <h6 class="section-label">Level Progress</h6>
+        <div class="d-flex justify-content-between mb-1">
+          <span style="font-size:0.875rem;font-weight:600;">{{ current_user.level }}</span>
+          <span style="font-size:0.8rem;color:#4a5568;">{{ current_user.points }} pts</span>
+        </div>
+        {% set next_thresholds = {'Reliable Rookie': 100, 'Steady Hauler': 300, 'Trusted Partner': 600, 'Lane Legend': 1000, 'DP World Elite': 1000} %}
+        {% set next = next_thresholds.get(current_user.level, 1000) %}
+        <div class="level-bar-wrap">
+          <div class="level-bar" style="width: {{ [[(current_user.points / next * 100)|int, 0]|max, 100]|min }}%"></div>
+        </div>
+        <div style="font-size:0.72rem;color:#4a5568;margin-top:0.3rem;">Next level at {{ next }} pts</div>
+      </div>
+
+      <div class="glass-card">
+        <h6 class="section-label">Quick Actions</h6>
+        <div class="d-grid gap-2">
+          <a href="/report" class="btn-glass"><i class="bi bi-flag"></i> Submit Disruption Report</a>
+          <a href="/feed" class="btn-glass"><i class="bi bi-camera-reels"></i> Trip Feed</a>
+          <a href="/profile" class="btn-glass"><i class="bi bi-person"></i> My Profile & Badges</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="col-lg-4">
+      <div class="glass-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-trophy text-accent-yellow"></i> Driver Leaderboard</h5>
+        {% for entry in leaderboard %}
+        <div class="leaderboard-row">
+          <div class="lb-rank {{ 'gold' if entry.rank == 1 else 'silver' if entry.rank == 2 else 'bronze' if entry.rank == 3 else '' }}">
+            {% if entry.rank <= 3 %}
+              {{ ['🥇','🥈','🥉'][entry.rank-1] }}
+            {% else %}
+              {{ entry.rank }}
+            {% endif %}
+          </div>
+          <div class="lb-name">
+            {{ entry.user.username if entry.user else 'Unknown' }}
+            {% if entry.user and entry.user.id == current_user.id %}
+              <span style="font-size:0.7rem;color:#00d4ff;"> ← you</span>
+            {% endif %}
+          </div>
+          <div class="lb-score">{{ entry.score|int }} pts</div>
+        </div>
+        {% else %}
+        <p style="color:#4a5568;font-size:0.875rem;">No rankings yet.</p>
+        {% endfor %}
+      </div>
+
+      <!-- My recent reports -->
+      <div class="glass-card">
+        <h6 class="section-label">My Recent Reports</h6>
+        {% for r in my_reports %}
+        <div class="py-2" style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <div style="font-size:0.8rem;font-weight:500;">{{ r.disruption_type.replace('_',' ').title() }}</div>
+          <div style="font-size:0.72rem;color:#4a5568;">
+            {{ r.created_at.strftime('%d %b %H:%M') }} ·
+            {% if r.verification_status == 'approved' %}
+              <span class="text-accent-green">Approved</span>
+            {% elif r.verification_status == 'rejected' %}
+              <span class="text-accent-red">Rejected</span>
+            {% else %}
+              <span class="text-accent-yellow">Pending</span>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <p style="color:#4a5568;font-size:0.875rem;">No reports yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Active disruptions map -->
+    <div class="col-lg-3">
+      <div class="glass-card">
+        <h6 class="section-label"><i class="bi bi-map"></i> Disruptions on My Lane</h6>
+        <div id="map" style="height:300px;"></div>
+        <div class="mt-3">
+          {% for d in active_disruptions[:5] %}
+          <div class="py-1" style="border-bottom:1px solid rgba(255,255,255,0.03);">
+            <span style="font-size:0.78rem;color:#ff6b35;"><i class="bi bi-exclamation-triangle-fill"></i></span>
+            <span style="font-size:0.78rem;margin-left:0.3rem;">{{ d.disruption_type.replace('_',' ').title() }}</span>
+            <span style="font-size:0.72rem;color:#4a5568;display:block;margin-left:1rem;">{{ d.location_name or 'Unknown' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const map = L.map('map').setView([19.0760, 72.8777], 7);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '©OpenStreetMap ©CartoDB', maxZoom: 19,
+  }).addTo(map);
+  const disruptions = {{ active_disruptions | selectattr('latitude') | list | tojson(default='[]') }};
+  disruptions.forEach(d => {
+    if (d.latitude && d.longitude) {
+      L.circleMarker([d.latitude, d.longitude], {
+        radius: 10, fillColor: '#ff4757', color: '#ff4757', fillOpacity: 0.6,
+      }).addTo(map).bindPopup(`<b style="color:#ff4757">${d.disruption_type.replace('_',' ')}</b><br>${d.location_name || ''}`);
+    }
+  });
+});
+</script>
+{% endblock %}
