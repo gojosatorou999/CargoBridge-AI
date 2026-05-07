@@ -18,7 +18,7 @@
 
 **CargoBridge AI** is designed to bridge the gap between MSME exporters, truck drivers, port workers, and data analysts by providing real-time insights, disruption reporting, slot recommendations, and resilience simulation.
 
-## ✨ Features
+## Features
 
 - 👥 **Multi-Role Dashboards:** Customized, high-end 3D scroll-effect views for Admin, Port Workers, Analysts, Truck Drivers, and Exporters.
 - 🤖 **AI-Powered Disruption Intelligence (CrewAI):** Utilizes a sophisticated multi-agent pipeline (Disruption Analyst, Weather/AIS Validator, and Confidence Scorer) to analyze and score disruption reports.
