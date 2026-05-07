@@ -4,3 +4,5 @@ venv/
 instance/
 *.sqlite
 *.db
+node_modules/
+ui-code/node_modules/

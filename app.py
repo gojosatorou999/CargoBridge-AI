@@ -28,6 +28,7 @@ from utils import (roles_required, log_action, allowed_file, send_whatsapp,
                    check_dd_risk, calculate_dd_saving, generate_certificate_pdf)
 from expert_system import (compute_confidence_score, generate_slot_recommendation,
                             run_resilience_simulation, check_and_award_badges)
+from cargo_crew import score_disruption_with_crew, crew_is_available
 from scheduler import init_scheduler
 from translations import get_strings, t
 
@@ -240,12 +241,21 @@ def admin_dashboard():
     reports = DisruptionReport.query.order_by(DisruptionReport.created_at.desc()).limit(20).all()
     pending = DisruptionReport.query.filter_by(verification_status='pending').count()
     users = User.query.order_by(User.created_at.desc()).limit(10).all()
+    total_users = User.query.count()
     agencies = Agency.query.filter_by(approved=False).count()
     total_savings = db.session.query(db.func.sum(Shipment.dd_saving_usd)).scalar() or 0
+    vessels = AISSnapshot.query.order_by(AISSnapshot.recorded_at.desc()).limit(50).all()
+    weather = WeatherSnapshot.query.order_by(WeatherSnapshot.recorded_at.desc()).first()
+    total_shipments = Shipment.query.count()
+    approved_reports = DisruptionReport.query.filter_by(verification_status='approved').count()
     return render_template('dashboard/admin.html',
                            reports=reports, pending=pending,
-                           users=users, agencies_pending=agencies,
-                           total_savings=total_savings)
+                           users=users, total_users=total_users,
+                           agencies_pending=agencies,
+                           total_savings=total_savings,
+                           vessels=vessels, weather=weather,
+                           total_shipments=total_shipments,
+                           approved_reports=approved_reports)
 
 
 @app.route('/dashboard/port-worker')
@@ -341,23 +351,105 @@ def submit_report():
         db.session.add(report)
         db.session.flush()  # get report.id
 
-        # Run expert system scoring
+        # Gather shared context data used by both scoring paths
         all_reports = DisruptionReport.query.all()
         user_reports = DisruptionReport.query.filter_by(submitted_by_id=current_user.id).all()
         weather_snaps = WeatherSnapshot.query.order_by(WeatherSnapshot.recorded_at.desc()).limit(5).all()
         ais_snaps = AISSnapshot.query.order_by(AISSnapshot.recorded_at.desc()).limit(10).all()
 
+        # ── Path A: CrewAI multi-agent pipeline (if configured) ───────────────
+        crew_result = None
+        if crew_is_available():
+            # Build a lightweight context dict for the agents
+            weather_ctx = None
+            if weather_snaps:
+                w = weather_snaps[0]
+                weather_ctx = {
+                    'temp_c': w.temp_c,
+                    'wind_speed_kmh': w.wind_speed_kmh,
+                    'humidity': w.humidity,
+                    'weather_code': w.weather_code,
+                    'wave_height_m': w.wave_height_m,
+                }
+
+            ais_ctx = [{
+                'vessel_name': v.vessel_name,
+                'destination_port': v.destination_port,
+                'speed_knots': v.speed_knots,
+            } for v in ais_snaps]
+
+            approved_hist = [r for r in user_reports if r.verification_status == 'approved']
+            rejected_hist = [r for r in user_reports if r.verification_status == 'rejected']
+            total_hist = len(approved_hist) + len(rejected_hist)
+            approval_rate = (
+                round(len(approved_hist) / total_hist, 2) if total_hist >= 3 else None
+            )
+
+            # Spatial corroboration count (same logic as expert_system)
+            from datetime import timedelta
+            from expert_system import haversine_km
+            cutoff = datetime.utcnow() - timedelta(hours=24)
+            nearby_count = sum(
+                1 for r in all_reports
+                if r.id != report.id
+                and r.created_at >= cutoff
+                and r.latitude is not None
+                and report.latitude is not None
+                and haversine_km(report.latitude, report.longitude,
+                                 r.latitude, r.longitude) <= 5.0
+                and r.disruption_type == report.disruption_type
+            )
+
+            context = {
+                'weather': weather_ctx,
+                'ais_vessels': ais_ctx,
+                'nearby_similar_reports': nearby_count,
+                'reporter_role': current_user.role,
+                'reporter_approval_rate': approval_rate,
+                'disruption_type': report.disruption_type,
+                'location_name': report.location_name,
+            }
+
+            crew_result = score_disruption_with_crew(report.description, context)
+
+        # ── Path B: Deterministic expert system (always runs as baseline) ─────
         score, breakdown, band, action = compute_confidence_score(
             report, current_user, all_reports, user_reports, weather_snaps, ais_snaps)
+
+        # ── Merge: blend CrewAI score with expert system if crew succeeded ────
+        if crew_result:
+            crew_score = crew_result['score']
+            # Weighted blend: 60% CrewAI + 40% deterministic
+            blended = round(crew_score * 0.60 + score * 0.40, 2)
+            breakdown['crew_score'] = crew_score
+            breakdown['crew_reason'] = crew_result.get('reason', '')
+            breakdown['crew_validation'] = crew_result.get('validation', '')
+            breakdown['crew_facts'] = crew_result.get('facts', {})
+            breakdown['blended_score'] = blended
+            breakdown['scoring_mode'] = 'crew_ai_blended'
+            score = blended
+            # Re-evaluate band after blending
+            from expert_system import CONFIDENCE_BANDS
+            for lo, hi, label, act in CONFIDENCE_BANDS:
+                if lo <= score <= hi:
+                    band = label
+                    action = act
+                    break
+        else:
+            breakdown['scoring_mode'] = 'expert_system_only'
 
         report.confidence_score = score
         report.parameter_breakdown = breakdown
         db.session.commit()
 
+        scoring_tag = '🤖 AI Crew' if crew_result else '📐 Expert System'
         log_action(db, current_user.id, 'submit_report', 'DisruptionReport', report.id,
-                   {'score': score, 'band': band})
+                   {'score': score, 'band': band, 'mode': breakdown.get('scoring_mode')})
 
-        flash(f'Report submitted. AI Confidence: {score:.0f}% ({band}).', 'success')
+        flash(
+            f'Report submitted. {scoring_tag} Confidence: {score:.0f}% ({band}).',
+            'success'
+        )
         return redirect(url_for('dashboard'))
 
     return render_template('report.html', form=form)
@@ -619,6 +711,15 @@ def api_ais_vessels():
         'eta': v.eta.isoformat() if v.eta else None,
         'speed': v.speed_knots,
     } for v in snaps])
+
+
+@app.route('/api/aisstream/key')
+@login_required
+@roles_required('admin')
+def aisstream_key():
+    """Securely expose AISStream API key to admin-only frontend."""
+    key = app.config.get('AISSTREAM_API_KEY', '')
+    return jsonify({'key': key, 'available': bool(key)})
 
 
 @app.route('/api/analytics/charts')

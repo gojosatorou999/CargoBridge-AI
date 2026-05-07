@@ -33,8 +33,8 @@
     <div class="col-6 col-md-3">
       <div class="stat-card">
         <div class="stat-label">Wind Speed</div>
-        <div class="stat-value text-accent-yellow">{{ weather.wind_speed_kmh|int if weather else '—' }}<small style="font-size:1rem"> km/h</small></div>
-        <div class="stat-sub">{{ weather.temp_c|int if weather else '—' }}°C at port</div>
+        <div class="stat-value text-accent-yellow">{{ (weather.wind_speed_kmh or 0)|int if weather else '—' }}<small style="font-size:1rem"> km/h</small></div>
+        <div class="stat-sub">{{ (weather.temp_c or 0)|int if weather else '—' }}°C at port</div>
       </div>
     </div>
   </div>

@@ -22,6 +22,7 @@ class Config:
 
     # AIS
     AIS_API_KEY = os.environ.get('AIS_API_KEY', '')
+    AISSTREAM_API_KEY = os.environ.get('AISSTREAM_API_KEY', '')
 
     # APScheduler
     SCHEDULER_API_ENABLED = False
