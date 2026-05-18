@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
@@ -38,10 +39,18 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    db_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL', '')
-    SQLALCHEMY_DATABASE_URI = db_url.replace(
-        'postgres://', 'postgresql://', 1
-    )
+    _raw_db_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL') or os.environ.get('POSTGRES_PRISMA_URL', '')
+    # Vercel Postgres / Neon may prefix with postgres:// — SQLAlchemy needs postgresql://
+    _is_postgres = bool(_raw_db_url)
+    SQLALCHEMY_DATABASE_URI = _raw_db_url.replace('postgres://', 'postgresql://', 1) if _raw_db_url else 'sqlite:///cargobridge_prod.db'
+    # NullPool: do NOT reuse connections across serverless invocations.
+    # Without this, Vercel/Neon serverless connections time out after the
+    # first request finishes and every subsequent request gets a broken conn.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'poolclass': NullPool,
+        # connect_timeout only valid for PostgreSQL / psycopg2
+        **({'connect_args': {'connect_timeout': 10}} if _is_postgres else {}),
+    }
 
 
 config_map = {

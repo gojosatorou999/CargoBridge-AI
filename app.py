@@ -46,6 +46,12 @@ def create_app(env='default'):
     Migrate(app, db)
     CSRFProtect(app)
 
+    # In production (Vercel) the filesystem is read-only — skip makedirs
+    is_production = app.config.get('ENV') == 'production' or os.environ.get('VERCEL')
+    if not is_production:
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
+
     login_manager = LoginManager(app)
     login_manager.login_view = 'login'
     login_manager.login_message_category = 'warning'
@@ -68,8 +74,10 @@ def create_app(env='default'):
         return dict(strings=strings, t=t, lang=lang, unread_count=unread,
                     now=datetime.utcnow())
 
-    # Scheduler — skip in testing
-    if not app.config.get('TESTING'):
+    # Scheduler — skip in testing and in serverless/production environments.
+    # APScheduler uses background threads which do not survive between Vercel
+    # serverless invocations; starting one on every cold start leaks connections.
+    if not app.config.get('TESTING') and not os.environ.get('VERCEL') and not app.config.get('DEBUG') == False:
         scheduler = BackgroundScheduler()
         init_scheduler(scheduler, app)
         scheduler.start()
