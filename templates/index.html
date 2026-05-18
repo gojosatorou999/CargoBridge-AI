@@ -9,6 +9,8 @@
     <script type="module" crossorigin src="{{ url_for('static', filename='ui-assets/index-CAB9GrOd.js') }}"></script>
     <link rel="stylesheet" crossorigin href="{{ url_for('static', filename='ui-assets/index-Cf-YFq8p.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='app_icon.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
   </head>
 
   <body style="background-color: #020617; color: white;">
@@ -24,5 +26,6 @@
         }
       });
     </script>
+    <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
   </body>
 </html>

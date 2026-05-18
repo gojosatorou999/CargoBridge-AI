@@ -1,12 +1,16 @@
 /* CargoBridge AI — Service Worker */
 
-const CACHE_NAME = 'cargobridge-v1';
+const CACHE_NAME = 'cargobridge-v2';
 const STATIC_ASSETS = [
   '/',
   '/static/css/style.css',
   '/static/js/script.js',
   '/static/js/pwa.js',
   '/static/manifest.json',
+  '/static/app_icon.png',
+  '/static/favicon.png',
+  '/static/ui-assets/index-CAB9GrOd.js',
+  '/static/ui-assets/index-Cf-YFq8p.css'
 ];
 
 self.addEventListener('install', event => {

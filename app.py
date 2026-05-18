@@ -7,7 +7,8 @@ import json
 from datetime import datetime, timedelta
 
 from flask import (Flask, render_template, redirect, url_for, request,
-                   jsonify, flash, send_file, abort, session, g)
+                   jsonify, flash, send_file, abort, session, g,
+                   make_response, send_from_directory)
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
@@ -171,6 +172,12 @@ def award_points(user, points, action):
 
 
 # ── Auth routes ───────────────────────────────────────────────────────────────
+
+@app.route('/sw.js')
+def service_worker():
+    response = make_response(send_from_directory('static', 'sw.js'))
+    response.headers['Content-Type'] = 'application/javascript'
+    return response
 
 @app.route('/')
 def index():
