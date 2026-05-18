@@ -11,10 +11,11 @@ if ('serviceWorker' in navigator) {
 // Install prompt (show Add to Home Screen button if available)
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
   const btn = document.getElementById('install-btn');
   if (btn) {
+    e.preventDefault();
+    deferredPrompt = e;
+    btn.classList.remove('d-none');
     btn.style.display = 'inline-flex';
     btn.addEventListener('click', () => {
       deferredPrompt.prompt();
