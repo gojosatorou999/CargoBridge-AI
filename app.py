@@ -39,18 +39,14 @@ def create_app(env='default'):
     app = Flask(__name__)
     app.config.from_object(config_map[env])
 
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
+    # Vercel's filesystem is read-only at runtime — only create dirs locally
+    if not os.environ.get('VERCEL'):
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
 
     db.init_app(app)
     Migrate(app, db)
     CSRFProtect(app)
-
-    # In production (Vercel) the filesystem is read-only — skip makedirs
-    is_production = app.config.get('ENV') == 'production' or os.environ.get('VERCEL')
-    if not is_production:
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
 
     login_manager = LoginManager(app)
     login_manager.login_view = 'login'
@@ -74,10 +70,9 @@ def create_app(env='default'):
         return dict(strings=strings, t=t, lang=lang, unread_count=unread,
                     now=datetime.utcnow())
 
-    # Scheduler — skip in testing and in serverless/production environments.
-    # APScheduler uses background threads which do not survive between Vercel
-    # serverless invocations; starting one on every cold start leaks connections.
-    if not app.config.get('TESTING') and not os.environ.get('VERCEL') and not app.config.get('DEBUG') == False:
+    # APScheduler: disabled on Vercel (serverless — threads die after each request)
+    # and disabled in production mode where DEBUG=False (gunicorn handles concurrency)
+    if not app.config.get('TESTING') and not os.environ.get('VERCEL') and app.config.get('DEBUG', False):
         scheduler = BackgroundScheduler()
         init_scheduler(scheduler, app)
         scheduler.start()
@@ -94,10 +89,14 @@ def _register_seed_data(app):
         if getattr(app, '_seeded', False):
             return
         app._seeded = True
-        with app.app_context():
-            db.create_all()
-            _seed_badges()
-            _seed_admin()
+        try:
+            with app.app_context():
+                db.create_all()
+                _seed_badges()
+                _seed_admin()
+        except Exception as exc:  # noqa: BLE001
+            # Log but do not crash the request — tables may already exist
+            app.logger.warning('seed_once skipped: %s', exc)
 
 
 def _seed_badges():
