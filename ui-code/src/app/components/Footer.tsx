@@ -8,9 +8,7 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold">CB</span>
-              </div>
+              <img src="/static/app_icon.png" alt="CargoBridge Logo" className="w-8 h-8 rounded" />
               <span className="font-bold text-white">CargoBridge AI</span>
             </div>
             <p className="text-slate-400 text-sm leading-relaxed">

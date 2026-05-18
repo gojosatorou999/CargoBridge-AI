@@ -15,9 +15,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-              <span className="text-white font-bold text-xl">CB</span>
-            </div>
+            <img src="/static/app_icon.png" alt="CargoBridge Logo" className="w-10 h-10 rounded-lg shadow-[0_0_20px_rgba(59,130,246,0.3)]" />
             <span className="text-xl font-bold text-white">CargoBridge AI</span>
           </div>
 
