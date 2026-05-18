@@ -48,8 +48,6 @@ class ProductionConfig(Config):
     # first request finishes and every subsequent request gets a broken conn.
     SQLALCHEMY_ENGINE_OPTIONS = {
         'poolclass': NullPool,
-        # connect_timeout only valid for PostgreSQL / psycopg2
-        **({'connect_args': {'connect_timeout': 10}} if _is_postgres else {}),
     }
 
 
