@@ -1,6 +1,6 @@
 /* CargoBridge AI — Service Worker */
 
-const CACHE_NAME = 'cargobridge-v2';
+const CACHE_NAME = 'cargobridge-v3';
 const STATIC_ASSETS = [
   '/',
   '/static/css/style.css',
@@ -30,12 +30,25 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Network-first for API calls
-  if (event.request.url.includes('/api/')) {
+  const url = new URL(event.request.url);
+
+  // Network-first for API calls and dynamic routes (HTML)
+  if (event.request.mode === 'navigate' || url.pathname.startsWith('/api/') || !url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|woff2?|json)$/i)) {
     event.respondWith(
-      fetch(event.request).catch(() => new Response('{"error":"offline"}', {
-        headers: { 'Content-Type': 'application/json' },
-      }))
+      fetch(event.request).catch(() => {
+        return caches.match(event.request).then(cached => {
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') {
+             return new Response('Offline. Please check your connection.', {
+               status: 503,
+               headers: { 'Content-Type': 'text/plain' }
+             });
+          }
+          return new Response('{"error":"offline"}', {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        });
+      })
     );
     return;
   }
