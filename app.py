@@ -36,7 +36,12 @@ from translations import get_strings, t
 # ── App factory ───────────────────────────────────────────────────────────────
 
 def create_app(env='default'):
-    app = Flask(__name__)
+    # Flask-SQLAlchemy calls os.makedirs(app.instance_path) internally.
+    # On Vercel, /var/task is read-only, so we redirect instance_path to /tmp.
+    if os.environ.get('VERCEL'):
+        app = Flask(__name__, instance_path='/tmp')
+    else:
+        app = Flask(__name__)
     app.config.from_object(config_map[env])
 
     # Vercel's filesystem is read-only at runtime — only create dirs locally
