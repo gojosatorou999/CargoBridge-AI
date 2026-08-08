@@ -13,7 +13,7 @@
     <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI"/>
   </p> 
 </div>
-
+  
 ---
 
 **CargoBridge AI** is designed to bridge the gap between MSME exporters, truck drivers, port workers, and data analysts by providing real-time insights, disruption reporting, slot recommendations, and resilience simulation.
